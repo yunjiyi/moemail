@@ -51,9 +51,23 @@ const setupConfigFile = (examplePath: string, targetPath: string) => {
     const configContent = readFileSync(examplePath, "utf-8");
     const json = JSON.parse(configContent);
 
-    // 写入 pages 项目名称
-    if (targetPath.split("/").at(-1) === "wrangler.json") {
-      json.name = PROJECT_NAME;
+    // 处理自定义项目名称
+    if (PROJECT_NAME !== "moemail") {
+      const wranglerFileName = targetPath.split("/").at(-1);
+
+      switch (wranglerFileName) {
+        case "wrangler.json":
+          json.name = PROJECT_NAME;
+          break;
+        case "wrangler.email.json":
+          json.name = `${PROJECT_NAME}-email-receiver-worker`;
+          break;
+        case "wrangler.cleanup.json":
+          json.name = `${PROJECT_NAME}-cleanup-worker`;
+          break;
+        default:
+          break;
+      }
     }
 
     // 处理数据库配置
