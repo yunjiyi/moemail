@@ -16,7 +16,6 @@ const PROJECT_NAME = process.env.PROJECT_NAME || "moemail";
 const DATABASE_NAME = process.env.DATABASE_NAME || "moemail-db";
 const KV_NAMESPACE_NAME = process.env.KV_NAMESPACE_NAME || "moemail-kv";
 const CUSTOM_DOMAIN = process.env.CUSTOM_DOMAIN;
-
 const KV_NAMESPACE_ID = process.env.KV_NAMESPACE_ID;
 
 /**
@@ -51,6 +50,11 @@ const setupConfigFile = (examplePath: string, targetPath: string) => {
 
     const configContent = readFileSync(examplePath, "utf-8");
     const json = JSON.parse(configContent);
+
+    // 写入 pages 项目名称
+    if (targetPath.split("/").at(-1) === "wrangler.json") {
+      json.name = PROJECT_NAME;
+    }
 
     // 处理数据库配置
     if (json.d1_databases && json.d1_databases.length > 0) {
