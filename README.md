@@ -129,6 +129,9 @@ pnpm generate-test-data
 ```
 ## 部署
 
+### 视频版保姆级部署教程
+https://www.bilibili.com/video/BV19wrXY2ESM/
+
 ### 本地 Wrangler 部署
 1. 创建 .env 文件
 ```bash
