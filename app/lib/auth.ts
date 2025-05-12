@@ -10,6 +10,7 @@ import CredentialsProvider from "next-auth/providers/credentials"
 import { hashPassword, comparePassword } from "@/lib/utils"
 import { authSchema } from "@/lib/validation"
 import { generateAvatarUrl } from "./avatar"
+import { getUserId } from "./apiKey"
 
 const ROLE_DESCRIPTIONS: Record<Role, string> = {
   [ROLES.EMPEROR]: "皇帝（网站所有者）",
@@ -62,12 +63,13 @@ export async function getUserRole(userId: string) {
 }
 
 export async function checkPermission(permission: Permission) {
-  const session = await auth()
-  if (!session?.user?.id) return false
+  const userId = await getUserId()
+
+  if (!userId) return false
 
   const db = createDb()
   const userRoleRecords = await db.query.userRoles.findMany({
-    where: eq(userRoles.userId, session.user.id),
+    where: eq(userRoles.userId, userId),
     with: { role: true },
   })
 
