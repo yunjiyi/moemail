@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text, primaryKey, uniqueIndex } from "drizzle-orm/sqlite-core"
+import { integer, sqliteTable, text, primaryKey, uniqueIndex, index } from "drizzle-orm/sqlite-core"
 import type { AdapterAccountType } from "next-auth/adapters"
 import { relations } from 'drizzle-orm';
 
@@ -46,7 +46,9 @@ export const emails = sqliteTable("email", {
     .notNull()
     .$defaultFn(() => new Date()),
   expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
-})
+}, (table) => ({
+  expiresAtIdx: index("email_expires_at_idx").on(table.expiresAt),
+}))
 
 export const messages = sqliteTable("message", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -60,7 +62,9 @@ export const messages = sqliteTable("message", {
   receivedAt: integer("received_at", { mode: "timestamp_ms" })
     .notNull()
     .$defaultFn(() => new Date()),
-})
+}, (table) => ({
+  emailIdIdx: index("message_email_id_idx").on(table.emailId),
+}))
 
 export const webhooks = sqliteTable('webhook', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
