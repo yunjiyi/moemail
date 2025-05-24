@@ -11,7 +11,7 @@ const CLEANUP_CONFIG = {
 } as const 
 
 const main = {
-  async scheduled(event: ScheduledEvent, env: Env) {
+  async scheduled(_: ScheduledEvent, env: Env) {
     const now = Date.now()
 
     try {
@@ -20,20 +20,20 @@ const main = {
         return
       }
 
-      // Directly delete expired emails (messages will be cascade-deleted via foreign key constraint)
       const result = await env.DB
         .prepare(`
           DELETE FROM email 
           WHERE expires_at < ?
           LIMIT ?
-          RETURNING id
         `)
         .bind(now, CLEANUP_CONFIG.BATCH_SIZE)
         .run()
 
-      const deletedCount = result?.meta?.changes || 0
-      console.log(`Deleted ${deletedCount} expired emails and their associated messages`)
-      
+      if (result.success) {
+        console.log(`Deleted ${result?.meta?.changes ?? 0} expired emails and their associated messages`)
+      } else {
+        console.error('Failed to delete expired emails')
+      }
     } catch (error) {
       console.error('Failed to cleanup:', error)
       throw error
