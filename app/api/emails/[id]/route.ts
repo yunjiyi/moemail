@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { createDb } from "@/lib/db"
 import { emails, messages } from "@/lib/schema"
-import { eq, and, lt, or, sql, ne } from "drizzle-orm"
+import { eq, and, lt, or, sql, ne, isNull } from "drizzle-orm"
 import { encodeCursor, decodeCursor } from "@/lib/cursor"
 import { getUserId } from "@/lib/apiKey"
 import { checkBasicSendPermission } from "@/lib/send-permissions"
@@ -87,7 +87,12 @@ export async function GET(
 
     const baseConditions = and(
       eq(messages.emailId, id),
-      messageType === 'sent' ? eq(messages.type, "sent") : ne(messages.type, "sent")
+      messageType === 'sent' 
+        ? eq(messages.type, "sent") 
+        : or(
+            ne(messages.type, "sent"),
+            isNull(messages.type)
+          )
     )
 
     const totalResult = await db.select({ count: sql<number>`count(*)` })
