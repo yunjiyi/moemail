@@ -55,11 +55,16 @@ export const messages = sqliteTable("message", {
   emailId: text("emailId")
     .notNull()
     .references(() => emails.id, { onDelete: "cascade" }),
-  fromAddress: text("from_address").notNull(),
+  fromAddress: text("from_address"),
+  toAddress: text("to_address"),
   subject: text("subject").notNull(),
   content: text("content").notNull(),
   html: text("html"),
+  type: text("type"),
   receivedAt: integer("received_at", { mode: "timestamp_ms" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  sentAt: integer("sent_at", { mode: "timestamp_ms" })
     .notNull()
     .$defaultFn(() => new Date()),
 }, (table) => ({
@@ -108,6 +113,8 @@ export const apiKeys = sqliteTable('api_keys', {
 }, (table) => ({
   nameUserIdUnique: uniqueIndex('name_user_id_unique').on(table.name, table.userId)
 }));
+
+
 
 export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
   user: one(users, {
