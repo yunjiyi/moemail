@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server"
 import { createDb } from "@/lib/db"
 import { emails, messages } from "@/lib/schema"
 import { eq, and, lt, or, sql, ne, isNull } from "drizzle-orm"
@@ -23,14 +22,14 @@ function isAllowed(request: Request) {
 }
 
 export async function OPTIONS(request: Request) {
+  const origin = request.headers.get("origin") || ""
   if (!isAllowed(request)) {
     return new Response("非法来源", { status: 403 })
   }
-
   return new Response(null, {
     status: 204,
     headers: {
-      "Access-Control-Allow-Origin": request.headers.get("origin") || "",
+      "Access-Control-Allow-Origin": origin,
       "Access-Control-Allow-Methods": "GET, DELETE, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, X-API-Key"
     }
@@ -43,7 +42,15 @@ export async function DELETE(
 ) {
   const origin = request.headers.get("origin") || ""
   if (!isAllowed(request)) {
-    return new Response("非法来源，禁止访问 API", { status: 403 })
+    return new Response(JSON.stringify({ error: "非法来源，禁止访问 API" }), {
+      status: 403,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Methods": "GET, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, X-API-Key"
+      }
+    })
   }
 
   const userId = await getUserId()
@@ -103,7 +110,15 @@ export async function GET(
 ) {
   const origin = request.headers.get("origin") || ""
   if (!isAllowed(request)) {
-    return new Response("非法来源，禁止访问 API", { status: 403 })
+    return new Response(JSON.stringify({ error: "非法来源，禁止访问 API" }), {
+      status: 403,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Methods": "GET, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, X-API-Key"
+      }
+    })
   }
 
   const { searchParams } = new URL(request.url)
@@ -165,14 +180,13 @@ export async function GET(
       .select({ count: sql<number>`count(*)` })
       .from(messages)
       .where(baseConditions)
-    const totalCount = Number(totalResult[0].count)
 
+    const totalCount = Number(totalResult[0].count)
     const conditions = [baseConditions]
 
     if (cursorStr) {
       const { timestamp, id: cursorId } = decodeCursor(cursorStr)
       const orderByTime = messageType === "sent" ? messages.sentAt : messages.receivedAt
-
       conditions.push(
         or(
           lt(orderByTime, new Date(timestamp)),
@@ -231,7 +245,7 @@ export async function GET(
     })
   } catch (error) {
     console.error("Failed to fetch messages:", error)
-    return new Response(JSON.stringify({ error: "Failed to fetch messages" }), {
+    return new Response(JSON.stringify({ error: "获取邮件失败" }), {
       status: 500,
       headers: {
         "Content-Type": "application/json",
