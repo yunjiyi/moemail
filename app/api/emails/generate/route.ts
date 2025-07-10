@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server"
 import { nanoid } from "nanoid"
 import { createDb } from "@/lib/db"
 import { emails } from "@/lib/schema"
@@ -11,50 +12,10 @@ import { ROLES } from "@/lib/permissions"
 
 export const runtime = "edge"
 
-const allowedOrigins = [
-  "https://toolxp.com",
-  "https://www.toolxp.com"
-]
-
-function isAllowed(request: Request) {
-  const origin = request.headers.get("origin") || ""
-  const referer = request.headers.get("referer") || ""
-  return (
-    allowedOrigins.includes(origin) ||
-    allowedOrigins.some(url => referer.startsWith(url))
-  )
-}
-
-export async function OPTIONS(request: Request) {
-  const origin = request.headers.get("origin") || ""
-
-  return new Response(null, {
-    status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": origin,
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, X-API-Key"
-    }
-  })
-}
-
-
 export async function POST(request: Request) {
-  const origin = request.headers.get("origin") || ""
-  if (!isAllowed(request)) {
-    return new Response(JSON.stringify({ error: "非法来源" }), {
-      status: 403,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": origin,
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, X-API-Key"
-      }
-    })
-  }
-
   const db = createDb()
   const env = getRequestContext().env
+
   const userId = await getUserId()
   const userRole = await getUserRole(userId!)
 
@@ -70,53 +31,36 @@ export async function POST(request: Request) {
             gt(emails.expiresAt, new Date())
           )
         )
-
+      
       if (Number(activeEmailsCount[0].count) >= Number(maxEmails)) {
-        return new Response(JSON.stringify({
-          error: `已达到最大邮箱数量限制 (${maxEmails})`
-        }), {
-          status: 403,
-          headers: {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": origin,
-            "Access-Control-Allow-Methods": "POST, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, X-API-Key"
-          }
-        })
+        return NextResponse.json(
+          { error: `已达到最大邮箱数量限制 (${maxEmails})` },
+          { status: 403 }
+        )
       }
     }
 
-    const { name, expiryTime, domain } = await request.json<{
+    const { name, expiryTime, domain } = await request.json<{ 
       name: string
       expiryTime: number
       domain: string
     }>()
 
     if (!EXPIRY_OPTIONS.some(option => option.value === expiryTime)) {
-      return new Response(JSON.stringify({ error: "无效的过期时间" }), {
-        status: 400,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": origin,
-          "Access-Control-Allow-Methods": "POST, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type, X-API-Key"
-        }
-      })
+      return NextResponse.json(
+        { error: "无效的过期时间" },
+        { status: 400 }
+      )
     }
 
     const domainString = await env.SITE_CONFIG.get("EMAIL_DOMAINS")
-    const domains = domainString ? domainString.split(",") : ["moemail.app"]
+    const domains = domainString ? domainString.split(',') : ["moemail.app"]
 
-    if (!domains.includes(domain)) {
-      return new Response(JSON.stringify({ error: "无效的域名" }), {
-        status: 400,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": origin,
-          "Access-Control-Allow-Methods": "POST, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type, X-API-Key"
-        }
-      })
+    if (!domains || !domains.includes(domain)) {
+      return NextResponse.json(
+        { error: "无效的域名" },
+        { status: 400 }
+      )
     }
 
     const address = `${name || nanoid(8)}@${domain}`
@@ -125,55 +69,37 @@ export async function POST(request: Request) {
     })
 
     if (existingEmail) {
-      return new Response(JSON.stringify({ error: "该邮箱地址已被使用" }), {
-        status: 409,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": origin,
-          "Access-Control-Allow-Methods": "POST, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type, X-API-Key"
-        }
-      })
+      return NextResponse.json(
+        { error: "该邮箱地址已被使用" },
+        { status: 409 }
+      )
     }
 
     const now = new Date()
-    const expires = expiryTime === 0
-      ? new Date("9999-01-01T00:00:00.000Z")
+    const expires = expiryTime === 0 
+      ? new Date('9999-01-01T00:00:00.000Z')
       : new Date(now.getTime() + expiryTime)
-
+    
     const emailData: typeof emails.$inferInsert = {
       address,
       createdAt: now,
       expiresAt: expires,
       userId: userId!
     }
-
+    
     const result = await db.insert(emails)
       .values(emailData)
       .returning({ id: emails.id, address: emails.address })
-
-    return new Response(JSON.stringify({
+    
+    return NextResponse.json({ 
       id: result[0].id,
-      email: result[0].address
-    }), {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": origin,
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, X-API-Key"
-      }
+      email: result[0].address 
     })
   } catch (error) {
-    console.error("Failed to generate email:", error)
-    return new Response(JSON.stringify({ error: "创建邮箱失败" }), {
-      status: 500,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": origin,
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, X-API-Key"
-      }
-    })
+    console.error('Failed to generate email:', error)
+    return NextResponse.json(
+      { error: "创建邮箱失败" },
+      { status: 500 }
+    )
   }
-}
+} 
