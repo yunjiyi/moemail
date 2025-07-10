@@ -27,6 +27,7 @@ function isAllowed(request: Request) {
 }
 
 export async function OPTIONS(request: Request) {
+  const origin = request.headers.get("origin") || ""
   if (!isAllowed(request)) {
     return new Response("非法来源", { status: 403 })
   }
@@ -34,7 +35,7 @@ export async function OPTIONS(request: Request) {
   return new Response(null, {
     status: 204,
     headers: {
-      "Access-Control-Allow-Origin": request.headers.get("origin") || "",
+      "Access-Control-Allow-Origin": origin,
       "Access-Control-Allow-Methods": "POST, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, X-API-Key"
     }
@@ -44,7 +45,15 @@ export async function OPTIONS(request: Request) {
 export async function POST(request: Request) {
   const origin = request.headers.get("origin") || ""
   if (!isAllowed(request)) {
-    return new Response("非法来源，禁止访问 API", { status: 403 })
+    return new Response("非法来源，禁止访问 API", {
+      status: 403,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, X-API-Key"
+      }
+    })
   }
 
   const db = createDb()
