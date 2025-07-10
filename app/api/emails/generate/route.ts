@@ -1,3 +1,16 @@
+const referer = request.headers.get('referer');
+const origin = request.headers.get('origin');
+
+const allowedOrigins = [
+  'https://toolxp.com',
+  'https://www.toolxp.com'
+];
+
+if (!allowedOrigins.includes(origin || '') && !allowedOrigins.some(url => referer?.startsWith(url))) {
+  return new Response('非法来源，禁止访问 API', { status: 403 });
+}
+
+
 import { NextResponse } from "next/server"
 import { nanoid } from "nanoid"
 import { createDb } from "@/lib/db"
