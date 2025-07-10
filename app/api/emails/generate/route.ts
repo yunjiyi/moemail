@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server"
 import { nanoid } from "nanoid"
 import { createDb } from "@/lib/db"
 import { emails } from "@/lib/schema"
@@ -28,24 +27,21 @@ function isAllowed(request: Request) {
 
 export async function OPTIONS(request: Request) {
   const origin = request.headers.get("origin") || ""
-  if (!isAllowed(request)) {
-    return new Response("非法来源", { status: 403 })
-  }
-
+  const allow = allowedOrigins.includes(origin)
   return new Response(null, {
-    status: 204,
-    headers: {
+    status: allow ? 204 : 403,
+    headers: allow ? {
       "Access-Control-Allow-Origin": origin,
       "Access-Control-Allow-Methods": "POST, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, X-API-Key"
-    }
+    } : {}
   })
 }
 
 export async function POST(request: Request) {
   const origin = request.headers.get("origin") || ""
   if (!isAllowed(request)) {
-    return new Response("非法来源，禁止访问 API", {
+    return new Response(JSON.stringify({ error: "非法来源" }), {
       status: 403,
       headers: {
         "Content-Type": "application/json",
